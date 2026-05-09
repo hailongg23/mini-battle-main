@@ -14,6 +14,14 @@ class User(BaseModel):
     username: str
     password: str
 
+@app.get("/health")
+async def health():
+    try:
+        await client.admin.command("ping")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail={"status": "error", "service": "user-service", "mongo": "unavailable"}) from exc
+    return {"status": "ok", "service": "user-service", "dependencies": {"mongo": "ok"}}
+
 @app.post("/register")
 async def register(user: User):
     if await users_collection.find_one({"username": user.username}):

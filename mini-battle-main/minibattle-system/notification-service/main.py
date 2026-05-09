@@ -3,6 +3,10 @@ app = FastAPI()
 
 log = []
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "notification-service"}
+
 @app.post("/notify")
 def notify(message: str = Body(..., embed=True)):
     log.append(message)

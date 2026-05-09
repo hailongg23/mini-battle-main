@@ -1,48 +1,87 @@
 version: "3.8"
+
+x-fastapi-healthcheck: &fastapi-healthcheck
+  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+  interval: 10s
+  timeout: 3s
+  retries: 5
+  start_period: 10s
+
 services:
   frontend:
     build: ./minibattle-frontend-ui
     ports:
       - "3000:80"
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
       
   api-gateway:
     build: ./minibattle-system/api-gateway
     ports:
       - "8000:8000"
     depends_on:
-      - user-service
-      - auth-service
-      - match-service
-      - game-service
-      - chat-service
-      - notification-service
+      user-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      match-service:
+        condition: service_healthy
+      game-service:
+        condition: service_healthy
+      chat-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      <<: *fastapi-healthcheck
 
   user-service:
     build: ./minibattle-system/user-service
-    depends_on: [mongo]
+    depends_on:
+      mongo:
+        condition: service_healthy
     environment:
       - MONGO_URL=mongodb://mongo:27017
+    healthcheck:
+      <<: *fastapi-healthcheck
 
   auth-service:
     build: ./minibattle-system/auth-service
-    depends_on: [mongo]
+    depends_on:
+      mongo:
+        condition: service_healthy
     environment:
       - MONGO_URL=mongodb://mongo:27017
       - JWT_SECRET=secret
+    healthcheck:
+      <<: *fastapi-healthcheck
 
   match-service:
     build: ./minibattle-system/match-service
+    healthcheck:
+      <<: *fastapi-healthcheck
 
   game-service:
     build: ./minibattle-system/game-service
+    healthcheck:
+      <<: *fastapi-healthcheck
 
   chat-service:
     build: ./minibattle-system/chat-service
+    healthcheck:
+      <<: *fastapi-healthcheck
 
   notification-service:
     build: ./minibattle-system/notification-service
+    healthcheck:
+      <<: *fastapi-healthcheck
 
   mongo:
     image: mongo
@@ -50,6 +89,12 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   mongo_data:

@@ -3,6 +3,10 @@ app = FastAPI()
 
 waiting = []
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "match-service"}
+
 @app.post("/match/join")
 def join(username: str):
     if username in waiting:

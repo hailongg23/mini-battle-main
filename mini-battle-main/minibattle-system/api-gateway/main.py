@@ -20,6 +20,10 @@ services = {
     "notify": "http://notification-service:8000"
 }
 
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "api-gateway"}
+
 @app.api_route("/{svc}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy(svc: str, path: str, req: Request):
     if svc not in services:

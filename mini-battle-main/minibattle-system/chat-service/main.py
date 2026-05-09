@@ -3,6 +3,10 @@ app = FastAPI()
 
 clients = []
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "chat-service"}
+
 @app.websocket("/ws/chat")
 async def chat(ws: WebSocket):
     await ws.accept()

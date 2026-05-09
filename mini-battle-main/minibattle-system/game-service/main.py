@@ -9,6 +9,10 @@ class Action(BaseModel):
     player: str
     action: str
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "game-service"}
+
 @app.post("/game/start")
 def start(match_id: str, players: list[str]):
     games[match_id] = {"players": players, "turn": players[0], "log": []}
