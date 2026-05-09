@@ -1,0 +1,55 @@
+version: "3.8"
+services:
+  frontend:
+    build: ./minibattle-frontend-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+      
+  api-gateway:
+    build: ./minibattle-system/api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - user-service
+      - auth-service
+      - match-service
+      - game-service
+      - chat-service
+      - notification-service
+
+  user-service:
+    build: ./minibattle-system/user-service
+    depends_on: [mongo]
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+
+  auth-service:
+    build: ./minibattle-system/auth-service
+    depends_on: [mongo]
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - JWT_SECRET=secret
+
+  match-service:
+    build: ./minibattle-system/match-service
+
+  game-service:
+    build: ./minibattle-system/game-service
+
+  chat-service:
+    build: ./minibattle-system/chat-service
+
+  notification-service:
+    build: ./minibattle-system/notification-service
+
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

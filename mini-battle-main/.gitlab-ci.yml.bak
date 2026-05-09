@@ -1,0 +1,87 @@
+stages:
+  - build
+  - scan
+  - deploy
+
+variables:
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+  DOCKER_TLS_CERTDIR: ""
+
+# ========== BUILD (GITLAB SHARED RUNNER) ==========
+build_and_push:
+  stage: build
+  image: docker:26
+  services:
+    - name: docker:26-dind
+      command: ["--tls=false"]
+  # KHÔNG có tags -> dùng shared runner
+  script:
+    - echo "==> Docker login to GitLab Registry"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+
+    - echo "==> Build images"
+    - docker build -t "$CI_REGISTRY_IMAGE/frontend:$IMAGE_TAG" minibattle-frontend-ui
+    - docker build -t "$CI_REGISTRY_IMAGE/api-gateway:$IMAGE_TAG" minibattle-system/api-gateway
+    - docker build -t "$CI_REGISTRY_IMAGE/user-service:$IMAGE_TAG" minibattle-system/user-service
+    - docker build -t "$CI_REGISTRY_IMAGE/auth-service:$IMAGE_TAG" minibattle-system/auth-service
+    - docker build -t "$CI_REGISTRY_IMAGE/match-service:$IMAGE_TAG" minibattle-system/match-service
+    - docker build -t "$CI_REGISTRY_IMAGE/game-service:$IMAGE_TAG" minibattle-system/game-service
+    - docker build -t "$CI_REGISTRY_IMAGE/chat-service:$IMAGE_TAG" minibattle-system/chat-service
+    - docker build -t "$CI_REGISTRY_IMAGE/notification-service:$IMAGE_TAG" minibattle-system/notification-service
+
+    - echo "==> Push images"
+    - docker push "$CI_REGISTRY_IMAGE/frontend:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/api-gateway:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/user-service:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/auth-service:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/match-service:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/game-service:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/chat-service:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/notification-service:$IMAGE_TAG"
+  only:
+    - main
+
+# ========== SCAN (GITLAB SHARED RUNNER) ==========
+scan_images:
+  stage: scan
+  image: docker:26
+  services:
+    - name: docker:26-dind
+      command: ["--tls=false"]
+  script:
+    - echo "==> Scan images with Trivy"
+    - docker run --rm aquasec/trivy:latest image --exit-code 0 --no-progress "$CI_REGISTRY_IMAGE/frontend:$IMAGE_TAG"
+    - docker run --rm aquasec/trivy:latest image --exit-code 0 --no-progress "$CI_REGISTRY_IMAGE/api-gateway:$IMAGE_TAG"
+    # thêm các service khác nếu muốn
+  needs: ["build_and_push"]
+  only:
+    - main
+
+# ========== DEPLOY (SELF-HOSTED RUNNER: docker-host) ==========
+deploy_local:
+  stage: deploy
+  tags:
+    - mini-battle          # => chỉ self-hosted runner nhận job này
+  script:
+    - echo "==> Docker login on deploy host"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+
+    - echo "==> Pull images tag $IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/frontend:$IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/api-gateway:$IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/user-service:$IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/auth-service:$IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/match-service:$IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/game-service:$IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/chat-service:$IMAGE_TAG"
+    - docker pull "$CI_REGISTRY_IMAGE/notification-service:$IMAGE_TAG"
+
+    # Dùng docker-compose.prod.yml chỉ chứa image: ...:${IMAGE_TAG}
+    - echo "==> Deploy with docker compose on docker-host"
+    - export IMAGE_TAG="$IMAGE_TAG"
+    - docker compose down
+    - sleep 20
+    - docker compose -f docker-compose.prod.yml up -d
+  needs: ["scan_images"]
+  only:
+    - main

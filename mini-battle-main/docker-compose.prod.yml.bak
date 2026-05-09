@@ -1,0 +1,55 @@
+version: "3.8"
+services:
+  frontend:
+    image: "${CI_REGISTRY_IMAGE}/frontend:${IMAGE_TAG}"
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+      
+  api-gateway:
+    image: "${CI_REGISTRY_IMAGE}/api-gateway:${IMAGE_TAG}"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - user-service
+      - auth-service
+      - match-service
+      - game-service
+      - chat-service
+      - notification-service
+
+  user-service:
+    image: "${CI_REGISTRY_IMAGE}/user-service:${IMAGE_TAG}"
+    depends_on: [mongo]
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+
+  auth-service:
+    image: "${CI_REGISTRY_IMAGE}/auth-service:${IMAGE_TAG}"
+    depends_on: [mongo]
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - JWT_SECRET=secret
+
+  match-service:
+    image: "${CI_REGISTRY_IMAGE}/match-service:${IMAGE_TAG}"
+
+  game-service:
+    image: "${CI_REGISTRY_IMAGE}/game-service:${IMAGE_TAG}"
+
+  chat-service:
+    image: "${CI_REGISTRY_IMAGE}/chat-service:${IMAGE_TAG}"
+
+  notification-service:
+    image: "${CI_REGISTRY_IMAGE}/notification-service:${IMAGE_TAG}"
+
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data_prod:/data/db
+
+volumes:
+  mongo_data_prod:

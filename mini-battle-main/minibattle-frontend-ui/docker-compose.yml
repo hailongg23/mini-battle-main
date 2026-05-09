@@ -1,0 +1,8 @@
+version: "3.8"
+services:
+  frontend:
+    build: ./minibattle-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway  # nếu backend đang chạy qua api-gateway
