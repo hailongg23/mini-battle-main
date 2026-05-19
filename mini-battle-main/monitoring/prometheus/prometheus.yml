@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s # Cứ 15 giây đi hút dữ liệu 1 lần
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'ubuntu-server'
+    static_configs:
+      - targets: ['node-exporter:9100'] # Hút data CPU/RAM từ Node Exporter
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']      # Hút data của từng dịch vụ MiniBattle
